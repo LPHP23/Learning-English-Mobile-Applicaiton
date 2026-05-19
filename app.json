@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "VocaBoost",
+    "slug": "vocaboost",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "vocaboost",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F0F0F"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vocaboost.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Used for pronunciation practice"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F0F0F"
+      },
+      "package": "com.vocaboost.app",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#4ADE80",
+          "sounds": []
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "newArchEnabled": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      },
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}
