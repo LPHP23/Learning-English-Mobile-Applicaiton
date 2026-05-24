@@ -1,30 +1,33 @@
 // lib/supabase.ts
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { getSupabaseConfig, isSupabaseConfigured } from './config';
 
 function createSupabaseClient(): SupabaseClient {
   const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabaseConfig();
 
-// Custom storage adapter using Expo SecureStore
-const ExpoSecureStoreAdapter = {
-  getItem: (key: string) => {
-    return SecureStore.getItemAsync(key);
-  },
-  setItem: (key: string, value: string) => {
-    return SecureStore.setItemAsync(key, value);
-  },
-  removeItem: (key: string) => {
-    return SecureStore.deleteItemAsync(key);
-  },
-};
+  const secureStoreAdapter = {
+    getItem: (key: string) => SecureStore.getItemAsync(key),
+    setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+    removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+  };
+
+  const asyncStorageAdapter = {
+    getItem: (key: string) => AsyncStorage.getItem(key),
+    setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
+    removeItem: (key: string) => AsyncStorage.removeItem(key),
+  };
+
+  const authStorage = Platform.OS === 'web' ? asyncStorageAdapter : secureStoreAdapter;
 
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-      storage: ExpoSecureStoreAdapter,
+      storage: authStorage,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      detectSessionInUrl: Platform.OS === 'web',
     },
   });
 }
@@ -47,7 +50,11 @@ export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
 export async function getTopics(userId: string) {
   const [{ data: topics, error: topicsErr }, { data: progress, error: progErr }] =
     await Promise.all([
-      supabase.from('topics').select('*').order('created_at', { ascending: false }),
+      supabase
+        .from('topics')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false }),
       supabase.from('user_progress').select('*').eq('user_id', userId),
     ]);
 

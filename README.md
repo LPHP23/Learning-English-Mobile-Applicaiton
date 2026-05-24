@@ -27,7 +27,7 @@ npx expo start
 |-------|-----------|
 | App | Expo 51, Expo Router, TypeScript |
 | Backend | Supabase (PostgreSQL, Auth, Edge Functions) |
-| AI (tuỳ chọn) | Claude API qua Edge Functions |
+| AI (tuỳ chọn) | AI provider qua Edge Functions |
 | Từ điển | Free Dictionary + MyMemory + VietPhrase DB |
 | Local cache | MMKV |
 

@@ -32,7 +32,7 @@ async function callEdgeFunction(name: string, body: object) {
   return res.json();
 }
 
-// ─── Generate words for a topic via Claude AI ──────────────────────────────────
+// ─── Generate words for a topic via Geminii ──────────────────────────────────
 export async function generateWordsForTopic(
   topic: string,
   count = 60

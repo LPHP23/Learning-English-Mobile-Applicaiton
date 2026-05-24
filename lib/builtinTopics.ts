@@ -1,5 +1,5 @@
 /**
- * Từ vựng có sẵn khi chưa deploy Claude / Edge Functions.
+ * Từ vựng có sẵn khi chưa deploy AI provider / Edge Functions.
  * Dùng làm fallback trong topic-select và demo offline.
  */
 export interface BuiltinWord {

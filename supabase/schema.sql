@@ -38,6 +38,7 @@ create trigger on_auth_user_created
 -- ─── Topics ──────────────────────────────────────────────────
 create table if not exists topics (
   id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users(id) on delete cascade,
   name text not null,
   emoji text default '📚',
   description text,
@@ -45,6 +46,8 @@ create table if not exists topics (
   cefr_level text default 'B1',
   created_at timestamptz default now()
 );
+
+create index if not exists topics_user_idx on topics(user_id);
 
 -- ─── Words ───────────────────────────────────────────────────
 create table if not exists words (
@@ -156,6 +159,9 @@ alter table profiles enable row level security;
 alter table word_progress enable row level security;
 alter table user_progress enable row level security;
 alter table streaks enable row level security;
+alter table topics enable row level security;
+alter table words enable row level security;
+alter table vietphrase enable row level security;
 
 -- Profiles: users can only see/edit their own
 create policy "Users can view own profile"
@@ -175,14 +181,50 @@ create policy "Users can view own topic progress"
 create policy "Users can manage own streak"
   on streaks for all using (auth.uid() = user_id);
 
--- Topics and Words: public read, authenticated insert
-create policy "Topics are public" on topics for select using (true);
-create policy "Authenticated users can create topics"
-  on topics for insert to authenticated with check (true);
+-- Topics: per-user ownership
+create policy "Users can read own topics"
+  on topics for select to authenticated using (auth.uid() = user_id);
+create policy "Users can create own topics"
+  on topics for insert to authenticated with check (auth.uid() = user_id);
+create policy "Users can update own topics"
+  on topics for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can delete own topics"
+  on topics for delete to authenticated using (auth.uid() = user_id);
 
-create policy "Words are public" on words for select using (true);
-create policy "Authenticated users can create words"
-  on words for insert to authenticated with check (true);
+-- Words: allowed only through user's topics
+create policy "Users can read own words"
+  on words for select to authenticated
+  using (exists (
+    select 1 from topics t
+    where t.id = words.topic_id
+      and t.user_id = auth.uid()
+  ));
+create policy "Users can create words for own topics"
+  on words for insert to authenticated
+  with check (exists (
+    select 1 from topics t
+    where t.id = words.topic_id
+      and t.user_id = auth.uid()
+  ));
+create policy "Users can update own words"
+  on words for update to authenticated
+  using (exists (
+    select 1 from topics t
+    where t.id = words.topic_id
+      and t.user_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from topics t
+    where t.id = words.topic_id
+      and t.user_id = auth.uid()
+  ));
+create policy "Users can delete own words"
+  on words for delete to authenticated
+  using (exists (
+    select 1 from topics t
+    where t.id = words.topic_id
+      and t.user_id = auth.uid()
+  ));
 
 create policy "VietPhrase is public" on vietphrase for select using (true);
 

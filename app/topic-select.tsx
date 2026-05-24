@@ -62,6 +62,7 @@ export default function TopicSelectScreen() {
           .from('topics')
           .select('id')
           .ilike('name', topicName)
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (existing) continue;
@@ -72,6 +73,7 @@ export default function TopicSelectScreen() {
         const { data: topic, error: topicErr } = await supabase
           .from('topics')
           .insert({
+            user_id: user.id,
             name: preset.name,
             emoji: preset.emoji,
             description: builtin?.description ?? `Vocabulary for ${preset.name.toLowerCase()}`,
@@ -133,7 +135,7 @@ export default function TopicSelectScreen() {
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Chọn chủ đề</Text>
-        <Text style={styles.subtitle}>Claude AI sẽ tạo từ vựng cho bạn</Text>
+        <Text style={styles.subtitle}>AI sẽ tạo từ vựng cho bạn</Text>
       </View>
 
       <ScrollView
@@ -177,7 +179,7 @@ export default function TopicSelectScreen() {
           </TouchableOpacity>
           {loading && (
             <Text style={styles.loadingNote}>
-              Claude đang tạo từ vựng... (30-60s)
+              AI đang tạo từ vựng... (30-60s)
             </Text>
           )}
         </View>

@@ -1,10 +1,113 @@
 // lib/storage.ts
-import { MMKV } from 'react-native-mmkv';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { MMKV as MMKVType } from 'react-native-mmkv';
 
-export const storage = new MMKV({
-  id: 'vocaboost-storage',
-  encryptionKey: 'vocaboost-secret',
-});
+type StorageLike = {
+  getString: (key: string) => string | undefined;
+  getNumber: (key: string) => number | undefined;
+  set: (key: string, value: string | number | boolean) => void;
+  delete: (key: string) => void;
+};
+
+const memoryStore = new Map<string, string>();
+let useAsyncFallback = false;
+
+const memoryStorage: StorageLike = {
+  getString: (key) => memoryStore.get(key),
+  getNumber: (key) => {
+    const value = memoryStore.get(key);
+    if (value === undefined) return undefined;
+    const num = Number(value);
+    return Number.isNaN(num) ? undefined : num;
+  },
+  set: (key, value) => {
+    const str = String(value);
+    memoryStore.set(key, str);
+    if (useAsyncFallback) {
+      AsyncStorage.setItem(key, str).catch(() => {});
+    }
+  },
+  delete: (key) => {
+    memoryStore.delete(key);
+    if (useAsyncFallback) {
+      AsyncStorage.removeItem(key).catch(() => {});
+    }
+  },
+};
+
+function getWebStorage(): StorageLike {
+  try {
+    if (typeof localStorage === 'undefined') return memoryStorage;
+    return {
+      getString: (key) => {
+        const value = localStorage.getItem(key);
+        return value === null ? undefined : value;
+      },
+      getNumber: (key) => {
+        const value = localStorage.getItem(key);
+        if (value === null) return undefined;
+        const num = Number(value);
+        return Number.isNaN(num) ? undefined : num;
+      },
+      set: (key, value) => {
+        localStorage.setItem(key, String(value));
+      },
+      delete: (key) => {
+        localStorage.removeItem(key);
+      },
+    };
+  } catch {
+    return memoryStorage;
+  }
+}
+
+function createNativeStorage(): StorageLike {
+  try {
+    const { MMKV } = require('react-native-mmkv') as {
+      MMKV: new (options: { id: string; encryptionKey: string }) => MMKVType;
+    };
+    return new MMKV({
+      id: 'vocaboost-storage',
+      encryptionKey: 'vocaboost-secret',
+    });
+  } catch {
+    useAsyncFallback = true;
+    return memoryStorage;
+  }
+}
+
+export const storage: StorageLike =
+  Platform.OS === 'web' ? getWebStorage() : createNativeStorage();
+
+let storageReady = !useAsyncFallback;
+
+export async function hydrateStorage(keys?: string[]): Promise<void> {
+  if (!useAsyncFallback || storageReady) return;
+  try {
+    if (keys && keys.length > 0) {
+      const entries = await AsyncStorage.multiGet(keys);
+      entries.forEach(([key, value]) => {
+        if (value !== null) memoryStore.set(key, value);
+      });
+      return;
+    }
+
+    const allKeys = await AsyncStorage.getAllKeys();
+    if (allKeys.length > 0) {
+      const entries = await AsyncStorage.multiGet(allKeys);
+      entries.forEach(([key, value]) => {
+        if (value !== null) memoryStore.set(key, value);
+      });
+    }
+  } finally {
+    storageReady = true;
+  }
+}
+
+export function isStorageReady(): boolean {
+  return storageReady;
+}
 
 // ─── Keys ──────────────────────────────────────────────────────────────────────
 const KEYS = {
@@ -16,6 +119,12 @@ const KEYS = {
   USER_PREFS: 'user_prefs',
   DICT_CACHE: 'dict_cache',
 };
+
+export const BOOTSTRAP_STORAGE_KEYS = [
+  KEYS.STREAK,
+  KEYS.USER_PREFS,
+  KEYS.QUIZ_HISTORY,
+];
 
 const DICT_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 ngày
 

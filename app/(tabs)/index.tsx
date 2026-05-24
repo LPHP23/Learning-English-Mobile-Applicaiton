@@ -8,6 +8,7 @@ import {
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase, getTopics, getStreak } from '../../lib/supabase';
@@ -29,7 +30,15 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (userId) loadData();
+    if (!userId) return;
+    let isMounted = true;
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (isMounted) loadData();
+    });
+    return () => {
+      isMounted = false;
+      task.cancel();
+    };
   }, [userId]);
 
   async function loadData() {

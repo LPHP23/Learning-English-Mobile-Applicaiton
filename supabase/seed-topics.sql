@@ -1,5 +1,7 @@
 -- VocaBoost: 3 chủ đề có sẵn + 10 từ/chủ đề (chạy sau schema.sql)
--- Chạy file này để dùng app ngay KHÔNG cần Claude API
+-- Chạy file này để dùng app ngay KHÔNG cần AI API
+-- LƯU Ý: Nếu bật topics theo từng user, hãy gán user_id sau khi seed:
+-- update topics set user_id = '<YOUR_USER_ID>' where user_id is null;
 
 -- Hospital
 insert into topics (id, name, emoji, description, total_words, cefr_level)
