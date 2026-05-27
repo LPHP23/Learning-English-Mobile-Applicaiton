@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "VocaBoost",
+    "name": "LingoGen",
     "slug": "vocaboost",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,7 +16,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.vocaboost.app",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Used for pronunciation practice"
+        "NSMicrophoneUsageDescription": "Used for pronunciation practice",
+        "NSPhotoLibraryUsageDescription": "Used to select your avatar image"
       }
     },
     "android": {

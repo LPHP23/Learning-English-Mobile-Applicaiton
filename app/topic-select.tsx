@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { generateWordsForTopic } from '../lib/api';
 import { getBuiltinTopic } from '../lib/builtinTopics';
+import TopicIcon from '../components/TopicIcon';
 
 const PRESET_TOPICS = [
   { name: 'Hospital', emoji: '🏥', level: 'Intermediate' },
@@ -151,7 +152,9 @@ export default function TopicSelectScreen() {
               onPress={() => toggleTopic(topic.name)}
             >
               {selected && <Text style={styles.checkmark}>✓</Text>}
-              <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+              <View style={styles.topicIcon}>
+                <TopicIcon topicName={topic.name} size={24} />
+              </View>
               <Text style={[styles.topicName, selected && styles.topicNameSelected]}>
                 {topic.name}
               </Text>
@@ -189,7 +192,7 @@ export default function TopicSelectScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: {
     paddingHorizontal: 20,
     paddingTop: 60,
@@ -238,7 +241,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontSize: 14,
   },
-  topicEmoji: { fontSize: 28, marginBottom: 8 },
+  topicIcon: { marginBottom: 10 },
   topicName: { fontSize: 13, fontWeight: '700', color: '#FFF', textAlign: 'center' },
   topicNameSelected: { color: '#4ADE80' },
   topicLevel: { fontSize: 11, color: '#555', marginTop: 4 },
@@ -250,9 +253,9 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 20,
     paddingBottom: 36,
-    backgroundColor: '#0F0F0F',
+    backgroundColor: 'rgba(8, 10, 16, 0.8)',
     borderTopWidth: 1,
-    borderTopColor: '#1A1A1A',
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
   ctaBtn: {
     backgroundColor: '#4ADE80',

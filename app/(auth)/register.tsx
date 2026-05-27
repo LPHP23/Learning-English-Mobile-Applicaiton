@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -58,60 +59,65 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
-        <View style={styles.logoArea}>
-          <Text style={styles.logoEmoji}>📚</Text>
-          <Text style={styles.appName}>VocaBoost</Text>
-          <Text style={styles.tagline}>Tạo tài khoản miễn phí</Text>
-        </View>
+        <View style={styles.card}>
+          <View style={styles.logoArea}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.logoImage}
+            />
+            <Text style={styles.appName}>LingoGen</Text>
+            <Text style={styles.tagline}>Tạo tài khoản miễn phí</Text>
+          </View>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Họ và tên"
-            placeholderTextColor="#666"
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-          />
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="Họ và tên"
+              placeholderTextColor="#6B7280"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#666"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#6B7280"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Mật khẩu (ít nhất 6 ký tự)"
-            placeholderTextColor="#666"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Mật khẩu (ít nhất 6 ký tự)"
+              placeholderTextColor="#6B7280"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
 
-          <TouchableOpacity
-            style={[styles.btn, styles.btnPrimary]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <Text style={styles.btnPrimaryText}>Đăng ký</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.btn, styles.btnPrimary]}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.btnPrimaryText}>Đăng ký</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Đã có tài khoản? </Text>
-          <Link href="/(auth)/login" style={styles.footerLink}>
-            Đăng nhập
-          </Link>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Đã có tài khoản? </Text>
+            <Link href="/(auth)/login" style={styles.footerLink}>
+              Đăng nhập
+            </Link>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -119,32 +125,49 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   inner: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 28,
-    paddingVertical: 40,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
   },
-  logoArea: { alignItems: 'center', marginBottom: 48 },
-  logoEmoji: { fontSize: 56, marginBottom: 12 },
-  appName: { fontSize: 36, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1 },
-  tagline: { fontSize: 14, color: '#666', marginTop: 6 },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: 24,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 6,
+  },
+  logoArea: { alignItems: 'center', marginBottom: 28 },
+  logoImage: {
+    width: 172,
+    height: 172,
+    borderRadius: 22,
+    marginBottom: 12,
+  },
+  appName: { fontSize: 36, fontWeight: '800', color: '#111827', letterSpacing: -1 },
+  tagline: { fontSize: 14, color: '#4B5563', marginTop: 6 },
   form: { gap: 14 },
   input: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#E5E7EB',
     borderRadius: 14,
     paddingHorizontal: 18,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#111827',
   },
   btn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   btnPrimary: { backgroundColor: '#4ADE80', marginTop: 4 },
   btnPrimaryText: { fontSize: 16, fontWeight: '700', color: '#000' },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 32 },
-  footerText: { color: '#666', fontSize: 15 },
-  footerLink: { color: '#4ADE80', fontSize: 15, fontWeight: '700' },
+  footerText: { color: '#4B5563', fontSize: 15 },
+  footerLink: { color: '#0F766E', fontSize: 15, fontWeight: '700' },
 });

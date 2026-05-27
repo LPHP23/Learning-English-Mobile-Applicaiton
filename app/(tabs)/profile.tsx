@@ -3,15 +3,24 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
   Switch,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { supabase, getStreak } from '../../lib/supabase';
-import { getUserPrefs, setUserPrefs, getQuizHistory } from '../../lib/storage';
+import {
+  getUserPrefs,
+  setUserPrefs,
+  getQuizHistory,
+  getAvatarUri,
+  setAvatarUri,
+} from '../../lib/storage';
+import * as ImagePicker from 'expo-image-picker';
 import type { User } from '../../types';
 
 export default function ProfileScreen() {
@@ -19,6 +28,11 @@ export default function ProfileScreen() {
   const [streak, setStreak] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [avatarUri, setAvatarUriState] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [pickingAvatar, setPickingAvatar] = useState(false);
   const quizHistory = getQuizHistory();
 
   useEffect(() => {
@@ -38,14 +52,18 @@ export default function ProfileScreen() {
         .eq('id', authUser.id)
         .single();
 
-      setUser(profile || {
+      const mergedProfile = profile || {
         id: authUser.id,
         email: authUser.email || '',
         full_name: authUser.user_metadata?.full_name || 'Người dùng',
         daily_goal: 20,
         notification_time: '08:00',
         created_at: authUser.created_at,
-      });
+      };
+
+      setUser(mergedProfile);
+      setNameDraft(mergedProfile.full_name || '');
+      setAvatarUriState(getAvatarUri(authUser.id));
 
       const streakData = await getStreak(authUser.id);
       setStreak(streakData);
@@ -70,6 +88,63 @@ export default function ProfileScreen() {
   function handleTtsToggle(val: boolean) {
     setTtsEnabled(val);
     setUserPrefs({ tts_enabled: val });
+  }
+
+  async function handlePickAvatar() {
+    if (!user) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Cần quyền truy cập ảnh', 'Vui lòng cho phép truy cập thư viện ảnh.');
+      return;
+    }
+
+    setPickingAvatar(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+
+      if (!result.canceled && result.assets[0]?.uri) {
+        const uri = result.assets[0].uri;
+        setAvatarUriState(uri);
+        setAvatarUri(user.id, uri);
+      }
+    } finally {
+      setPickingAvatar(false);
+    }
+  }
+
+  async function handleSaveName() {
+    if (!user) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      Alert.alert('Tên không hợp lệ', 'Vui lòng nhập tên của bạn.');
+      return;
+    }
+    if (trimmed === user.full_name) {
+      setEditingName(false);
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: trimmed })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      await supabase.auth.updateUser({ data: { full_name: trimmed } });
+      setUser({ ...user, full_name: trimmed });
+      setEditingName(false);
+    } catch (err: any) {
+      Alert.alert('Lỗi', err?.message ?? 'Không thể cập nhật tên.');
+    } finally {
+      setSavingProfile(false);
+    }
   }
 
   const avgScore =
@@ -97,12 +172,63 @@ export default function ProfileScreen() {
     >
       {/* Avatar */}
       <View style={styles.avatarSection}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user?.full_name?.[0]?.toUpperCase() || 'U'}
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={handlePickAvatar}
+          disabled={pickingAvatar}
+        >
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>
+              {user?.full_name?.[0]?.toUpperCase() || 'U'}
+            </Text>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handlePickAvatar} disabled={pickingAvatar}>
+          <Text style={styles.avatarHint}>
+            {pickingAvatar ? 'Đang tải ảnh...' : 'Đổi ảnh đại diện'}
           </Text>
-        </View>
-        <Text style={styles.userName}>{user?.full_name}</Text>
+        </TouchableOpacity>
+        {editingName ? (
+          <View style={styles.nameEditRow}>
+            <TextInput
+              style={styles.nameInput}
+              value={nameDraft}
+              onChangeText={setNameDraft}
+              placeholder="Nhập tên của bạn"
+              placeholderTextColor="#6B7280"
+            />
+            <View style={styles.nameActions}>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={handleSaveName}
+                disabled={savingProfile}
+              >
+                <Text style={styles.saveBtnText}>
+                  {savingProfile ? 'Đang lưu...' : 'Lưu'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => {
+                  setEditingName(false);
+                  setNameDraft(user?.full_name ?? '');
+                }}
+                disabled={savingProfile}
+              >
+                <Text style={styles.cancelBtnText}>Hủy</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.nameRow}>
+            <Text style={styles.userName}>{user?.full_name}</Text>
+            <TouchableOpacity onPress={() => setEditingName(true)}>
+              <Text style={styles.editNameText}>Chỉnh sửa</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <Text style={styles.userEmail}>{user?.email}</Text>
       </View>
 
@@ -169,9 +295,9 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingBottom: 100 },
-  center: { flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
 
   avatarSection: { alignItems: 'center', paddingTop: 70, paddingBottom: 28 },
   avatar: {
@@ -182,8 +308,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: { fontSize: 34, fontWeight: '900', color: '#000' },
+  avatarHint: { color: '#94A3B8', fontSize: 13, marginBottom: 10 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  editNameText: { color: '#4ADE80', fontSize: 13, fontWeight: '700' },
+  nameEditRow: { width: '100%', marginTop: 6 },
+  nameInput: {
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#1F2937',
+    color: '#FFF',
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  nameActions: { flexDirection: 'row', gap: 10, marginTop: 10, justifyContent: 'center' },
+  saveBtn: {
+    backgroundColor: '#4ADE80',
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  saveBtnText: { color: '#000', fontWeight: '700', fontSize: 13 },
+  cancelBtn: {
+    backgroundColor: '#1F2937',
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  cancelBtnText: { color: '#E5E7EB', fontWeight: '700', fontSize: 13 },
   userName: { fontSize: 22, fontWeight: '800', color: '#FFF' },
   userEmail: { fontSize: 14, color: '#666', marginTop: 4 },
 

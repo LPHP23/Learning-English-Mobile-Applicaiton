@@ -13,6 +13,13 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase, getWordsByTopic, markWordLearned, markWordForReview, updateStreak } from '../lib/supabase';
 import { speakWord } from '../lib/tts';
+import { generateWordsForTopic } from '../lib/api';
+import {
+  getWordCardIndex,
+  setWordCardIndex,
+  getLastAiGenerationDate,
+  setLastAiGenerationDate,
+} from '../lib/storage';
 import type { Word } from '../types';
 
 const CEFR_COLORS: Record<string, string> = {
@@ -20,6 +27,33 @@ const CEFR_COLORS: Record<string, string> = {
   B1: '#60A5FA', B2: '#93C5FD',
   C1: '#F59E0B', C2: '#FCD34D',
 };
+
+const INITIAL_GENERATE_COUNT = 60;
+const DAILY_GENERATE_COUNT = 12;
+
+function getTodayKey(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function formatAiError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  if (/AI_ENDPOINT/i.test(raw) || /invalid URL/i.test(raw)) {
+    return 'AI_ENDPOINT chưa đúng. Hãy đặt đúng URL trong Supabase secrets.';
+  }
+  if (/AI provider not configured/i.test(raw)) {
+    return 'AI chưa cấu hình. Hãy đặt AI_ENDPOINT và AI_API_KEY trong Supabase.';
+  }
+  const match = raw.match(/Edge function error:\s*(.*)$/);
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed?.error) return String(parsed.error);
+    } catch {
+      return match[1];
+    }
+  }
+  return raw;
+}
 
 export default function WordCardScreen() {
   const { topicId, topicName } = useLocalSearchParams<{
@@ -32,6 +66,7 @@ export default function WordCardScreen() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const flipAnim = useRef(new Animated.Value(0)).current;
 
@@ -45,16 +80,114 @@ export default function WordCardScreen() {
     if (userId && topicId) loadWords();
   }, [userId, topicId]);
 
-  async function loadWords() {
+  async function loadWords(forceGenerate = false) {
+    if (!userId || !topicId) return;
+    setLoading(true);
+    setAiError(null);
+    let data: Word[] = [];
     try {
-      const data = await getWordsByTopic(topicId, userId!);
-      setWords(data || []);
+      const topicLabel = typeof topicName === 'string' ? topicName : '';
+      const todayKey = getTodayKey();
+
+      data = (await getWordsByTopic(topicId, userId)) || [];
+      const lastGen = getLastAiGenerationDate(userId, topicId);
+      const shouldGenerate = forceGenerate || data.length === 0 || lastGen !== todayKey;
+
+      if (shouldGenerate && topicLabel) {
+        try {
+          const existingSet = new Set(
+            data
+              .map((w) => w.word?.trim().toLowerCase())
+              .filter((w): w is string => !!w)
+          );
+          const maxOrder = data.reduce(
+            (max, w) => Math.max(max, (w as any).cefr_order ?? 0),
+            0
+          );
+          const count = data.length === 0 ? INITIAL_GENERATE_COUNT : DAILY_GENERATE_COUNT;
+          const aiWords = await generateWordsForTopic(topicLabel, count);
+
+          const deduped: Array<{
+            word: string;
+            ipa: string;
+            part_of_speech: string;
+            cefr_level: string;
+            vietnamese_meaning: string;
+            example_sentence: string;
+          }> = [];
+          const seen = new Set<string>();
+
+          for (const raw of aiWords as any[]) {
+            const word = typeof raw.word === 'string' ? raw.word.trim() : '';
+            const key = word.toLowerCase();
+            if (!word || existingSet.has(key) || seen.has(key)) continue;
+            seen.add(key);
+
+            const example =
+              typeof raw.example_sentence === 'string'
+                ? raw.example_sentence
+                : Array.isArray(raw.example_sentences)
+                ? raw.example_sentences[0] ?? ''
+                : '';
+
+            deduped.push({
+              word,
+              ipa: raw.ipa ?? '',
+              part_of_speech: raw.part_of_speech ?? 'n',
+              cefr_level: raw.cefr_level ?? 'B1',
+              vietnamese_meaning: raw.vietnamese_meaning ?? '',
+              example_sentence: example,
+            });
+          }
+
+          if (deduped.length > 0) {
+            const toInsert = deduped.map((w, index) => ({
+              ...w,
+              topic_id: topicId,
+              cefr_order: maxOrder + index + 1,
+            }));
+
+            const { error } = await supabase.from('words').insert(toInsert);
+            if (error) throw error;
+
+            await supabase
+              .from('topics')
+              .update({ total_words: data.length + toInsert.length })
+              .eq('id', topicId);
+
+            setLastAiGenerationDate(userId, topicId, todayKey);
+            data = (await getWordsByTopic(topicId, userId)) || data;
+          } else if (data.length > 0) {
+            setLastAiGenerationDate(userId, topicId, todayKey);
+          }
+        } catch (genErr) {
+          setAiError(formatAiError(genErr));
+        }
+      }
     } catch (err) {
       console.error(err);
+      setAiError(formatAiError(err));
     } finally {
+      setWords(data || []);
+      if (data.length > 0) {
+        const savedIndex = getWordCardIndex(userId, topicId);
+        const clamped = Math.min(savedIndex, data.length - 1);
+        setCurrentIndex(clamped);
+      } else {
+        setCurrentIndex(0);
+      }
       setLoading(false);
     }
   }
+
+  function handleRetryGenerate() {
+    void loadWords(true);
+  }
+
+  useEffect(() => {
+    if (!userId || !topicId) return;
+    setWordCardIndex(userId, topicId, currentIndex);
+  }, [currentIndex, topicId, userId]);
 
   function flipCard() {
     const toValue = isFlipped ? 0 : 1;
@@ -120,7 +253,17 @@ export default function WordCardScreen() {
   if (words.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyText}>Không có từ nào.</Text>
+        <Text style={styles.emptyText}>Chưa có từ cho chủ đề này.</Text>
+        {aiError ? (
+          <Text style={styles.emptySub}>{aiError}</Text>
+        ) : (
+          <Text style={styles.emptySub}>
+            Hãy thử mở lại sau hoặc kiểm tra cấu hình AI.
+          </Text>
+        )}
+        <TouchableOpacity style={styles.retryBtn} onPress={handleRetryGenerate}>
+          <Text style={styles.retryBtnText}>Tạo lại từ</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backLink}>← Quay lại</Text>
         </TouchableOpacity>
@@ -238,9 +381,18 @@ export default function WordCardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  center: { flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: '#666', fontSize: 16, marginBottom: 16 },
+  container: { flex: 1, backgroundColor: '#000' },
+  center: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
+  emptyText: { color: '#E5E7EB', fontSize: 16, marginBottom: 8 },
+  emptySub: { color: '#94A3B8', fontSize: 13, textAlign: 'center', marginBottom: 16 },
+  retryBtn: {
+    backgroundColor: '#4ADE80',
+    borderRadius: 14,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  retryBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
   backLink: { color: '#4ADE80', fontSize: 16 },
 
   header: {
@@ -253,10 +405,12 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 44,
     height: 44,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#101010',
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1F1F1F',
   },
   backBtnText: { color: '#FFF', fontSize: 20 },
   headerCenter: { flex: 1, alignItems: 'center' },
@@ -265,7 +419,7 @@ const styles = StyleSheet.create({
 
   progressBar: {
     height: 3,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#0B0B0B',
     marginHorizontal: 20,
     borderRadius: 2,
   },
@@ -277,13 +431,13 @@ const styles = StyleSheet.create({
 
   cardArea: { flex: 1, justifyContent: 'center', paddingHorizontal: 20, marginVertical: 24 },
   card: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#0B0B0B',
     borderRadius: 24,
     padding: 32,
     minHeight: 340,
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#1F1F1F',
     backfaceVisibility: 'hidden',
   },
   cardFront: { alignItems: 'center' },
@@ -314,10 +468,12 @@ const styles = StyleSheet.create({
 
   speakBtn: {
     marginTop: 20,
-    backgroundColor: '#222',
+    backgroundColor: '#111',
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#1F1F1F',
   },
   speakBtnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
   flipHint: { color: '#444', fontSize: 13, marginTop: 24 },
@@ -333,7 +489,7 @@ const styles = StyleSheet.create({
   posText: { color: '#4ADE80', fontSize: 13, fontWeight: '700' },
   vietnameseText: { fontSize: 30, fontWeight: '800', color: '#FFF', letterSpacing: -0.5, marginBottom: 20 },
   exampleBox: {
-    backgroundColor: '#222',
+    backgroundColor: '#111',
     borderRadius: 14,
     padding: 16,
     borderLeftWidth: 3,
@@ -344,12 +500,12 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 16 },
   actionReview: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#111',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#1F1F1F',
   },
   actionReviewText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
   actionLearned: {
@@ -370,12 +526,12 @@ const styles = StyleSheet.create({
   navBtn: {
     width: 52,
     height: 52,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#111',
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#1F1F1F',
   },
   navBtnText: { color: '#FFF', fontSize: 22 },
   navDisabled: { opacity: 0.3 },

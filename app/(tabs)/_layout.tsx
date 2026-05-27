@@ -1,11 +1,18 @@
 // app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
+
+function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   return (
     <View style={[styles.iconWrap, focused && styles.iconActive]}>
-      <Text style={styles.emoji}>{emoji}</Text>
+      <MaterialCommunityIcons
+        name={name}
+        size={22}
+        color={focused ? '#4ADE80' : '#94A3B8'}
+      />
     </View>
   );
 }
@@ -22,25 +29,33 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="home-variant-outline" focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="quiz"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="✏️" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="clipboard-text-outline" focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="dictionary"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📖" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="book-open-outline" focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name="account-circle-outline" focused={focused} />
+          ),
         }}
       />
     </Tabs>
@@ -64,8 +79,7 @@ const styles = StyleSheet.create({
   },
   iconActive: {
     backgroundColor: '#1E2D22',
-  },
-  emoji: {
-    fontSize: 22,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
   },
 });

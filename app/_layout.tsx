@@ -1,12 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, ImageBackground, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { isSupabaseConfigured } from '../lib/config';
 import { BOOTSTRAP_STORAGE_KEYS, hydrateStorage, isStorageReady } from '../lib/storage';
 import { colors } from '../constants/theme';
 import SetupRequired from '../components/SetupRequired';
+
+function AppBackground({ children }: { children: ReactNode }) {
+  return (
+    <ImageBackground
+      source={require('../assets/splash.png')}
+      style={styles.appBackground}
+      resizeMode="cover"
+    >
+      <View style={styles.appOverlay}>{children}</View>
+    </ImageBackground>
+  );
+}
 
 export default function RootLayout() {
   const [storageReady, setStorageReady] = useState(isStorageReady());
@@ -26,34 +39,48 @@ export default function RootLayout() {
 
   if (!supabaseConfigured) {
     return (
-      <>
+      <AppBackground>
         <StatusBar style="light" />
         <SetupRequired />
-      </>
+      </AppBackground>
     );
   }
 
   if (!storageReady) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.bg,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <StatusBar style="light" />
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
+      <AppBackground>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'transparent',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <StatusBar style="light" />
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      </AppBackground>
     );
   }
 
-  return <AuthenticatedRoot />;
+  return (
+    <AppBackground>
+      <AuthenticatedRoot />
+    </AppBackground>
+  );
 }
 
 function AuthenticatedRoot() {
   const { supabase } = require('../lib/supabase') as typeof import('../lib/supabase');
+  const navTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: 'transparent',
+      card: 'transparent',
+    },
+  };
 
   const [initialRoute, setInitialRoute] = useState<'(tabs)' | '(auth)' | null>(null);
   const initialRouteRef = useRef<'(tabs)' | '(auth)' | null>(null);
@@ -88,7 +115,7 @@ function AuthenticatedRoot() {
       <View
         style={{
           flex: 1,
-          backgroundColor: colors.bg,
+          backgroundColor: 'transparent',
           justifyContent: 'center',
           alignItems: 'center',
         }}
@@ -99,21 +126,33 @@ function AuthenticatedRoot() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="light" />
-      <Stack
-        initialRouteName={initialRoute}
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bg },
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="word-card" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="topic-select" />
-      </Stack>
-    </GestureHandlerRootView>
+    <ThemeProvider value={navTheme}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <StatusBar style="light" />
+        <Stack
+          initialRouteName={initialRoute}
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: 'transparent' },
+            animation: 'slide_from_right',
+          }}
+        >
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="word-card" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="topic-select" />
+        </Stack>
+      </GestureHandlerRootView>
+    </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  appBackground: {
+    flex: 1,
+  },
+  appOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+});

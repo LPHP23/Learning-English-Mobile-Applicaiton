@@ -13,6 +13,7 @@ import {
 import { router } from 'expo-router';
 import { supabase, getTopics, getStreak } from '../../lib/supabase';
 import type { Topic, StreakData } from '../../types';
+import TopicIcon from '../../components/TopicIcon';
 
 const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
@@ -93,8 +94,9 @@ export default function HomeScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>Xin chào! 👋</Text>
-        <Text style={styles.subtitle}>Hôm nay bạn muốn học gì?</Text>
+        <Text style={styles.greeting}>
+          Chào mừng bạn đến với lớp học LingoGen!
+        </Text>
       </View>
 
       {/* Streak card */}
@@ -109,7 +111,7 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.streakSub}>
             {(streak?.current_streak ?? 0) > 0
-              ? 'Cố lên! Quay lại ngày mai'
+              ? 'Lớp học mở cửa mỗi ngày, đừng bỏ lỡ nhé!'
               : 'Bắt đầu chuỗi của bạn hôm nay!'}
           </Text>
         </View>
@@ -149,6 +151,7 @@ export default function HomeScreen() {
                 const learned = progress?.learned_count ?? 0;
                 const total = topic.total_words ?? 20;
                 const pct = total > 0 ? (learned / total) : 0;
+                const iconUri = (topic as any).icon_url ?? (topic as any).image_url;
 
                 return (
                   <TouchableOpacity
@@ -161,7 +164,9 @@ export default function HomeScreen() {
                       })
                     }
                   >
-                    <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+                    <View style={styles.topicIcon}>
+                      <TopicIcon topicName={topic.name} imageUri={iconUri} size={22} />
+                    </View>
                     <Text style={styles.topicName}>{topic.name}</Text>
                     <View style={styles.progressBar}>
                       <View style={[styles.progressFill, { width: `${pct * 100}%` }]} />
@@ -206,22 +211,27 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.topicGrid}>
-        {newTopics.map((topic: any) => (
-          <TouchableOpacity
-            key={topic.id}
-            style={styles.topicGridCard}
-            onPress={() =>
-              router.push({
-                pathname: '/word-card',
-                params: { topicId: topic.id, topicName: topic.name },
-              })
-            }
-          >
-            <Text style={styles.topicGridEmoji}>{topic.emoji}</Text>
-            <Text style={styles.topicGridName}>{topic.name}</Text>
-            <Text style={styles.topicGridLevel}>{topic.cefr_level}</Text>
-          </TouchableOpacity>
-        ))}
+        {newTopics.map((topic: any) => {
+          const iconUri = (topic as any).icon_url ?? (topic as any).image_url;
+          return (
+            <TouchableOpacity
+              key={topic.id}
+              style={styles.topicGridCard}
+              onPress={() =>
+                router.push({
+                  pathname: '/word-card',
+                  params: { topicId: topic.id, topicName: topic.name },
+                })
+              }
+            >
+              <View style={styles.topicGridIcon}>
+                <TopicIcon topicName={topic.name} imageUri={iconUri} size={20} />
+              </View>
+              <Text style={styles.topicGridName}>{topic.name}</Text>
+              <Text style={styles.topicGridLevel}>{topic.cefr_level}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
       </>
       )}
@@ -230,11 +240,11 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingBottom: 100 },
-  center: { flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
   header: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20 },
-  greeting: { fontSize: 28, fontWeight: '800', color: '#FFF', letterSpacing: -0.5 },
+  greeting: { fontSize: 20, fontWeight: '800', color: '#FFF', letterSpacing: -0.2, lineHeight: 28 },
   subtitle: { fontSize: 15, color: '#666', marginTop: 4 },
 
   streakCard: {
@@ -285,7 +295,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2A2A2A',
   },
-  topicEmoji: { fontSize: 30, marginBottom: 8 },
+  topicIcon: { marginBottom: 10 },
   topicName: { fontSize: 16, fontWeight: '700', color: '#FFF', marginBottom: 10 },
   progressBar: { height: 4, backgroundColor: '#2A2A2A', borderRadius: 2, marginBottom: 6 },
   progressFill: { height: '100%', backgroundColor: '#4ADE80', borderRadius: 2 },
@@ -306,7 +316,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2A2A2A',
   },
-  topicGridEmoji: { fontSize: 28, marginBottom: 8 },
+  topicGridIcon: { marginBottom: 10 },
   topicGridName: { fontSize: 15, fontWeight: '700', color: '#FFF', marginBottom: 4 },
   topicGridLevel: { fontSize: 12, color: '#4ADE80', fontWeight: '600' },
 

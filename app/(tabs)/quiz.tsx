@@ -225,8 +225,8 @@ export default function QuizScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  center: { flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center', padding: 32 },
+  container: { flex: 1, backgroundColor: 'transparent' },
+  center: { flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', padding: 32 },
   loadingText: { color: '#666', marginTop: 16, fontSize: 15 },
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
   emptyTitle: { color: '#FFF', fontSize: 22, fontWeight: '800', textAlign: 'center' },

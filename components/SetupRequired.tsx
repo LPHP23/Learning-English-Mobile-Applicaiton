@@ -34,7 +34,7 @@ export default function SetupRequired() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+  container: { flex: 1, backgroundColor: 'transparent' },
   content: {
     flexGrow: 1,
     justifyContent: 'center',

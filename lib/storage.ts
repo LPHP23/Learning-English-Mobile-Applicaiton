@@ -118,6 +118,11 @@ const KEYS = {
   QUIZ_HISTORY: 'quiz_history',
   USER_PREFS: 'user_prefs',
   DICT_CACHE: 'dict_cache',
+  AVATAR_URI: (userId: string) => `avatar_${userId}`,
+  WORD_CARD_INDEX: (userId: string, topicId: string) =>
+    `word_card_${userId}_${topicId}`,
+  AI_GEN_DATE: (userId: string, topicId: string) =>
+    `ai_gen_${userId}_${topicId}`,
 };
 
 export const BOOTSTRAP_STORAGE_KEYS = [
@@ -194,6 +199,48 @@ export function getUserPrefs(): UserPrefs {
 export function setUserPrefs(prefs: Partial<UserPrefs>): void {
   const current = getUserPrefs();
   storage.set(KEYS.USER_PREFS, JSON.stringify({ ...current, ...prefs }));
+}
+
+// ─── Avatar (local) ─────────────────────────────────────────────────────────
+export function getAvatarUri(userId: string): string | null {
+  return storage.getString(KEYS.AVATAR_URI(userId)) ?? null;
+}
+
+export function setAvatarUri(userId: string, uri: string | null): void {
+  if (!uri) {
+    storage.delete(KEYS.AVATAR_URI(userId));
+    return;
+  }
+  storage.set(KEYS.AVATAR_URI(userId), uri);
+}
+
+// ─── Word card position ─────────────────────────────────────────────────────
+export function getWordCardIndex(userId: string, topicId: string): number {
+  return storage.getNumber(KEYS.WORD_CARD_INDEX(userId, topicId)) ?? 0;
+}
+
+export function setWordCardIndex(
+  userId: string,
+  topicId: string,
+  index: number
+): void {
+  storage.set(KEYS.WORD_CARD_INDEX(userId, topicId), index);
+}
+
+// ─── AI generation (per day) ───────────────────────────────────────────────
+export function getLastAiGenerationDate(
+  userId: string,
+  topicId: string
+): string | null {
+  return storage.getString(KEYS.AI_GEN_DATE(userId, topicId)) ?? null;
+}
+
+export function setLastAiGenerationDate(
+  userId: string,
+  topicId: string,
+  date: string
+): void {
+  storage.set(KEYS.AI_GEN_DATE(userId, topicId), date);
 }
 
 // ─── Quiz history ──────────────────────────────────────────────────────────────

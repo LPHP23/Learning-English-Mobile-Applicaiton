@@ -1,8 +1,4 @@
-// supabase/functions/generate-words/index.ts
-// Deploy: supabase functions deploy generate-words
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,14 +13,52 @@ serve(async (req) => {
   try {
     const { topic, count = 60 } = await req.json();
 
-    const aiEndpoint = Deno.env.get('AI_ENDPOINT');
-    const aiApiKey = Deno.env.get('AI_API_KEY');
-    if (!aiEndpoint || !aiApiKey) {
-      throw new Error('AI provider not configured. Set AI_ENDPOINT and AI_API_KEY in Supabase secrets.');
+    const normalizeSecret = (value: string | undefined, key: string) => {
+      if (!value) return '';
+      let trimmed = value.trim();
+      if (
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))
+      ) {
+        trimmed = trimmed.slice(1, -1);
+      }
+      const prefix = `${key}=`;
+      if (trimmed.startsWith(prefix)) {
+        return trimmed.slice(prefix.length).trim();
+      }
+      if (trimmed.includes(prefix)) {
+        return trimmed.split(prefix).pop()?.trim() ?? '';
+      }
+      return trimmed;
+    };
+
+    const aiEndpoint = normalizeSecret(Deno.env.get('AI_ENDPOINT'), 'AI_ENDPOINT');
+    const aiApiKey = normalizeSecret(Deno.env.get('AI_API_KEY'), 'AI_API_KEY');
+    if (!aiEndpoint) {
+      throw new Error('AI provider not configured. Set AI_ENDPOINT in Supabase secrets.');
     }
-    const endpointUrl = aiEndpoint.includes('?')
-      ? `${aiEndpoint}&key=${aiApiKey}`
-      : `${aiEndpoint}?key=${aiApiKey}`;
+    if (!/^https?:\/\//i.test(aiEndpoint)) {
+      throw new Error('AI_ENDPOINT must be a valid URL (do not include "AI_ENDPOINT=").');
+    }
+
+    let endpointUrl = aiEndpoint;
+    try {
+      const url = new URL(aiEndpoint);
+      const hasKey = url.searchParams.has('key');
+      if (aiApiKey) {
+        url.searchParams.set('key', aiApiKey);
+      } else if (!hasKey) {
+        throw new Error('AI_API_KEY is missing. Set AI_API_KEY in Supabase secrets.');
+      }
+
+      if (!url.pathname.includes(':generateContent')) {
+        url.pathname = url.pathname.replace(/\/$/, '') + ':generateContent';
+      }
+
+      endpointUrl = url.toString();
+    } catch (err) {
+      throw new Error('AI_ENDPOINT must be a valid URL.');
+    }
 
     const prompt = `You are an English vocabulary expert. Generate exactly ${count} English vocabulary words for the topic "${topic}".
 
@@ -76,7 +110,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`AI API error: ${err}`);
+      throw new Error(`AI API error (${response.status}): ${err}`);
     }
 
     const data = await response.json();

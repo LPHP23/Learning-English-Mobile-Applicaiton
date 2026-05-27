@@ -10,11 +10,10 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Link } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
-import { colors } from '../../constants/theme';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -46,15 +45,14 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <LinearGradient
-        colors={['#0F0F0F', '#142218', '#0F0F0F']}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.inner}>
+      <View style={styles.card}>
         {/* Logo */}
         <View style={styles.logoArea}>
-          <Text style={styles.logoEmoji}>📚</Text>
-          <Text style={styles.appName}>VocaBoost</Text>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logoImage}
+          />
+          <Text style={styles.appName}>LingoGen</Text>
           <Text style={styles.tagline}>Học từ vựng tiếng Anh mỗi ngày</Text>
         </View>
 
@@ -63,7 +61,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email"
-            placeholderTextColor="#666"
+            placeholderTextColor="#6B7280"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -74,7 +72,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Mật khẩu"
-            placeholderTextColor="#666"
+            placeholderTextColor="#6B7280"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -121,44 +119,55 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
-  },
-  inner: {
-    flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
+    backgroundColor: 'transparent',
+  },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: 24,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 6,
   },
   logoArea: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 28,
   },
-  logoEmoji: {
-    fontSize: 56,
+  logoImage: {
+    width: 172,
+    height: 172,
+    borderRadius: 22,
     marginBottom: 12,
   },
   appName: {
     fontSize: 36,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#111827',
     letterSpacing: -1,
   },
   tagline: {
     fontSize: 14,
-    color: '#666',
+    color: '#4B5563',
     marginTop: 6,
   },
   form: {
     gap: 14,
   },
   input: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#E5E7EB',
     borderRadius: 14,
     paddingHorizontal: 18,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#111827',
   },
   btn: {
     borderRadius: 14,
@@ -182,20 +191,20 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: '#E5E7EB',
   },
   dividerText: {
-    color: '#666',
+    color: '#6B7280',
     fontSize: 14,
   },
   btnGoogle: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#E5E7EB',
   },
   btnGoogleText: {
     fontSize: 16,
-    color: '#FFF',
+    color: '#111827',
     fontWeight: '600',
   },
   footer: {
@@ -204,11 +213,11 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   footerText: {
-    color: '#666',
+    color: '#4B5563',
     fontSize: 15,
   },
   footerLink: {
-    color: '#4ADE80',
+    color: '#0F766E',
     fontSize: 15,
     fontWeight: '700',
   },

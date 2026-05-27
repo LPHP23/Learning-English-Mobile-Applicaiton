@@ -201,7 +201,7 @@ export default function DictionaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
   title: { fontSize: 28, fontWeight: '800', color: '#FFF', letterSpacing: -0.5 },
   subtitle: { fontSize: 14, color: '#666', marginTop: 4 },

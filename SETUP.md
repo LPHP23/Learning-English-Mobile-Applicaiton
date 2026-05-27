@@ -35,6 +35,7 @@ cp .env.example .env
 supabase secrets set AI_ENDPOINT=https://your-ai-endpoint
 supabase secrets set AI_API_KEY=your-ai-key
 ```
+Lưu ý: giá trị secret chỉ là URL/key, KHÔNG được thêm "AI_ENDPOINT=" hoặc "AI_API_KEY=" vào giá trị.
 
 ## Bước 4: Deploy Edge Functions
 
@@ -51,6 +52,16 @@ supabase link --project-ref your-project-ref
 # Deploy functions
 supabase functions deploy generate-words
 supabase functions deploy generate-quiz
+```
+
+## Bước 4.1: Backfill từ vựng (optional)
+
+Thêm `SUPABASE_SERVICE_ROLE_KEY` vào `.env` (server-side only), rồi chạy:
+
+```bash
+npm run backfill:words
+# Top-up đến 60 từ nếu đã có ít hơn 60
+BACKFILL_COUNT=60 npm run backfill:words -- --topup
 ```
 
 ## Bước 5: Enable Google OAuth (optional)
